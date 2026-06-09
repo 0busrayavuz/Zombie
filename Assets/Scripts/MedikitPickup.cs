@@ -17,7 +17,7 @@ public class MedikitPickup : MonoBehaviour
     {
         startPosition = transform.position;
         FindPlayer();
-        MakeGreen();
+        KeepWhite();
     }
 
     void Update()
@@ -80,7 +80,7 @@ public class MedikitPickup : MonoBehaviour
         Destroy(gameObject);
     }
 
-    void MakeGreen()
+    void KeepWhite()
     {
         Renderer renderer = GetComponent<Renderer>();
         if (renderer == null)
@@ -89,7 +89,7 @@ public class MedikitPickup : MonoBehaviour
         }
 
         Material material = renderer.material;
-        material.name = "Medikit Green";
-        material.color = new Color(0.08f, 0.68f, 0.22f);
+        material.name = "Medikit White";
+        material.color = Color.white;
     }
 }

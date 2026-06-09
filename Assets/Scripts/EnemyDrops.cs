@@ -19,7 +19,7 @@ public class EnemyDrops : MonoBehaviour
         GameObject medikit = GameObject.CreatePrimitive(PrimitiveType.Cube);
         medikit.name = "Dropped Medikit";
         medikit.transform.position = position;
-        medikit.transform.localScale = new Vector3(0.7f, 0.45f, 0.9f);
+        medikit.transform.localScale = new Vector3(0.52f, 0.3f, 0.68f);
 
         Collider collider = medikit.GetComponent<Collider>();
         if (collider != null)
@@ -35,34 +35,13 @@ public class EnemyDrops : MonoBehaviour
         Renderer renderer = medikit.GetComponent<Renderer>();
         if (renderer != null)
         {
-            renderer.material = CreateMaterial("Dropped Medikit Green", new Color(0.08f, 0.68f, 0.22f));
+            Texture2D texture = Resources.Load<Texture2D>("Textures/MedikitTexture");
+            renderer.material = texture != null
+                ? CreateTextureMaterial("Medikit White Cross", texture)
+                : CreateMaterial("Medikit White", Color.white);
         }
 
-        CreateCrossBar(medikit.transform, new Vector3(0.42f, 0.08f, 0.12f));
-        CreateCrossBar(medikit.transform, new Vector3(0.12f, 0.08f, 0.42f));
         Object.Destroy(medikit, 25f);
-    }
-
-    static void CreateCrossBar(Transform parent, Vector3 scale)
-    {
-        GameObject bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        bar.name = "White Cross";
-        bar.transform.SetParent(parent);
-        bar.transform.localPosition = new Vector3(0f, 0.28f, 0f);
-        bar.transform.localRotation = Quaternion.identity;
-        bar.transform.localScale = scale;
-
-        Collider collider = bar.GetComponent<Collider>();
-        if (collider != null)
-        {
-            Object.Destroy(collider);
-        }
-
-        Renderer renderer = bar.GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            renderer.material = CreateMaterial("Medikit White", Color.white);
-        }
     }
 
     static Material CreateMaterial(string materialName, Color color)
@@ -76,6 +55,20 @@ public class EnemyDrops : MonoBehaviour
         Material material = new Material(shader);
         material.name = materialName;
         material.color = color;
+        return material;
+    }
+
+    static Material CreateTextureMaterial(string materialName, Texture texture)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null)
+        {
+            shader = Shader.Find("Unlit/Texture");
+        }
+
+        Material material = new Material(shader);
+        material.name = materialName;
+        material.mainTexture = texture;
         return material;
     }
 }
