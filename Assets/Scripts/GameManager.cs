@@ -129,6 +129,7 @@ public class GameManager : MonoBehaviour
 
         if (victoryAudio != null)
         {
+            victoryAudio.time = victoryAudio.clip.length > 60f ? 60f : 0f;
             victoryAudio.Play();
         }
     }
