@@ -12,6 +12,7 @@ public class RifleWeapon : MonoBehaviour
     Health ownerHealth;
     AudioSource audioSource;
     AudioClip shotClip;
+    AudioClip[] ricochetClips;
     float nextFireTime;
     float hitMarkerUntil;
 
@@ -31,6 +32,7 @@ public class RifleWeapon : MonoBehaviour
 
         audioSource.spatialBlend = 0f;
         shotClip = Resources.Load<AudioClip>("Audio/RifleShot");
+        ricochetClips = Resources.LoadAll<AudioClip>("Audio/Ricochets");
     }
 
     void Update()
@@ -74,13 +76,29 @@ public class RifleWeapon : MonoBehaviour
             {
                 targetHealth.Damage(damageDealt);
                 CombatEffects.CreateBlood(hit.point, hit.normal);
-                tracerEnd = hit.point;
                 hitMarkerUntil = Time.time + 0.12f;
-                break;
             }
+            else
+            {
+                PlayRicochet(hit.point);
+            }
+
+            tracerEnd = hit.point;
+            break;
         }
 
         DrawTracer(ray.origin, tracerEnd);
+    }
+
+    void PlayRicochet(Vector3 position)
+    {
+        if (ricochetClips == null || ricochetClips.Length == 0)
+        {
+            return;
+        }
+
+        AudioClip clip = ricochetClips[Random.Range(0, ricochetClips.Length)];
+        AudioSource.PlayClipAtPoint(clip, position, 0.42f);
     }
 
     void DrawTracer(Vector3 start, Vector3 end)

@@ -35,7 +35,22 @@ public class MainMenuGui : MonoBehaviour
     Texture2D optionsButton;
     Texture2D quitButton;
     Texture2D okButton;
+    Texture2D optionButtonBackground;
+    Texture2D optionButtonPressed;
+    Texture2D sliderBackground;
+    Texture2D sliderThumb;
+    Texture2D optionsTitle;
+    Texture2D difficultyTitle;
+    Texture2D soundTitle;
+    Texture2D easyText;
+    Texture2D normalText;
+    Texture2D hardText;
+    AudioSource menuAudio;
+    AudioClip menuClick;
     GUIStyle imageButtonStyle;
+    GUIStyle optionButtonStyle;
+    GUIStyle sliderStyle;
+    GUIStyle sliderThumbStyle;
     GUIStyle headingStyle;
     GUIStyle labelStyle;
     bool optionsOpen;
@@ -59,6 +74,21 @@ public class MainMenuGui : MonoBehaviour
         optionsButton = Resources.Load<Texture2D>("Gui/ButtonOptions");
         quitButton = Resources.Load<Texture2D>("Gui/ButtonQuit");
         okButton = Resources.Load<Texture2D>("Gui/ButtonOk");
+        optionButtonBackground = Resources.Load<Texture2D>("Gui/ButtonBg");
+        optionButtonPressed = Resources.Load<Texture2D>("Gui/ButtonBgPressed");
+        sliderBackground = Resources.Load<Texture2D>("Gui/SliderBg");
+        sliderThumb = Resources.Load<Texture2D>("Gui/SliderThumb");
+        optionsTitle = Resources.Load<Texture2D>("Gui/TitleOptions");
+        difficultyTitle = Resources.Load<Texture2D>("Gui/TitleDifficulty");
+        soundTitle = Resources.Load<Texture2D>("Gui/TitleSound");
+        easyText = Resources.Load<Texture2D>("Gui/TextEasy");
+        normalText = Resources.Load<Texture2D>("Gui/TextNormal");
+        hardText = Resources.Load<Texture2D>("Gui/TextHard");
+
+        menuClick = Resources.Load<AudioClip>("Audio/MenuClick");
+        menuAudio = gameObject.AddComponent<AudioSource>();
+        menuAudio.playOnAwake = false;
+        menuAudio.spatialBlend = 0f;
 
         selectedDifficulty = GameSettings.Difficulty;
         soundVolume = GameSettings.SoundVolume;
@@ -205,26 +235,29 @@ public class MainMenuGui : MonoBehaviour
 
         if (DrawImageButton(new Rect(x, y, width, 78f), newGameButton, "NEW GAME"))
         {
+            PlayMenuClick();
             startRequested = true;
         }
 
         y += 78f + gap;
         if (DrawImageButton(new Rect(x, y, width, 78f), optionsButton, "OPTIONS"))
         {
+            PlayMenuClick();
             optionsOpen = true;
         }
 
         y += 78f + gap;
         if (DrawImageButton(new Rect(x, y, width, 78f), quitButton, "QUIT"))
         {
+            PlayMenuClick();
             Application.Quit();
         }
     }
 
     void DrawOptions()
     {
-        float width = Mathf.Min(620f, Screen.width - 48f);
-        float height = Mathf.Min(390f, Screen.height - 70f);
+        float width = Mathf.Min(760f, Screen.width - 36f);
+        float height = Mathf.Min(510f, Screen.height - 36f);
         Rect panel = new Rect(
             (Screen.width - width) * 0.5f,
             (Screen.height - height) * 0.5f,
@@ -234,38 +267,93 @@ public class MainMenuGui : MonoBehaviour
 
         DrawColorRect(panel, new Color(0.03f, 0.03f, 0.035f, 0.94f));
         GUI.Box(panel, GUIContent.none);
-        GUI.Label(new Rect(panel.x, panel.y + 22f, panel.width, 42f), "OPTIONS", headingStyle);
 
-        GUI.Label(new Rect(panel.x + 45f, panel.y + 95f, 180f, 32f), "DIFFICULTY", labelStyle);
-        string[] difficulties = { "EASY", "NORMAL", "HARD" };
-        selectedDifficulty = GUI.SelectionGrid(
-            new Rect(panel.x + 230f, panel.y + 90f, panel.width - 275f, 42f),
-            selectedDifficulty,
-            difficulties,
-            3
-        );
+        Rect titleRect = new Rect(panel.x + panel.width * 0.2f, panel.y + 18f, panel.width * 0.6f, 74f);
+        DrawTextureOrLabel(titleRect, optionsTitle, "OPTIONS", headingStyle);
 
-        GUI.Label(new Rect(panel.x + 45f, panel.y + 175f, 180f, 32f), "SOUND", labelStyle);
+        Rect difficultyTitleRect = new Rect(panel.x + 38f, panel.y + 105f, 210f, 55f);
+        DrawTextureOrLabel(difficultyTitleRect, difficultyTitle, "DIFFICULTY", labelStyle);
+
+        float buttonAreaX = panel.x + 38f;
+        float buttonAreaWidth = panel.width - 76f;
+        float buttonGap = 14f;
+        float difficultyButtonWidth = (buttonAreaWidth - buttonGap * 2f) / 3f;
+        float difficultyButtonHeight = Mathf.Clamp(difficultyButtonWidth * 0.32f, 58f, 82f);
+        float difficultyY = panel.y + 165f;
+        Texture2D[] difficultyLabels = { easyText, normalText, hardText };
+        string[] difficultyFallbacks = { "EASY", "NORMAL", "HARD" };
+
+        for (int i = 0; i < difficultyLabels.Length; i++)
+        {
+            Rect buttonRect = new Rect(
+                buttonAreaX + i * (difficultyButtonWidth + buttonGap),
+                difficultyY,
+                difficultyButtonWidth,
+                difficultyButtonHeight
+            );
+
+            if (selectedDifficulty == i)
+            {
+                DrawBorder(ExpandRect(buttonRect, 4f), new Color(1f, 0.92f, 0.12f), 3f);
+            }
+
+            if (GUI.Button(buttonRect, GUIContent.none, optionButtonStyle))
+            {
+                selectedDifficulty = i;
+                PlayMenuClick();
+            }
+
+            Rect textRect = new Rect(
+                buttonRect.x + buttonRect.width * 0.16f,
+                buttonRect.y + buttonRect.height * 0.18f,
+                buttonRect.width * 0.68f,
+                buttonRect.height * 0.64f
+            );
+            DrawTextureOrLabel(textRect, difficultyLabels[i], difficultyFallbacks[i], labelStyle);
+        }
+
+        Rect soundTitleRect = new Rect(panel.x + 38f, panel.y + 285f, 170f, 54f);
+        DrawTextureOrLabel(soundTitleRect, soundTitle, "SOUND", labelStyle);
+
+        float sliderX = panel.x + 220f;
+        float sliderWidth = panel.width - 265f;
         soundVolume = GUI.HorizontalSlider(
-            new Rect(panel.x + 230f, panel.y + 188f, panel.width - 275f, 28f),
+            new Rect(sliderX, panel.y + 302f, sliderWidth, 32f),
             soundVolume,
             0f,
-            1f
+            1f,
+            sliderStyle,
+            sliderThumbStyle
         );
         AudioListener.volume = soundVolume;
 
         GUI.Label(
-            new Rect(panel.x + 230f, panel.y + 215f, panel.width - 275f, 28f),
+            new Rect(sliderX, panel.y + 342f, sliderWidth, 28f),
             Mathf.RoundToInt(soundVolume * 100f) + "%",
             labelStyle
         );
 
-        Rect okRect = new Rect(panel.xMax - 190f, panel.yMax - 82f, 150f, 54f);
+        float okWidth = Mathf.Min(190f, panel.width * 0.3f);
+        Rect okRect = new Rect(
+            panel.x + (panel.width - okWidth) * 0.5f,
+            panel.yMax - 82f,
+            okWidth,
+            56f
+        );
         if (DrawImageButton(okRect, okButton, "OK"))
         {
+            PlayMenuClick();
             GameSettings.Difficulty = selectedDifficulty;
             GameSettings.SoundVolume = soundVolume;
             optionsOpen = false;
+        }
+    }
+
+    void PlayMenuClick()
+    {
+        if (menuAudio != null && menuClick != null)
+        {
+            menuAudio.PlayOneShot(menuClick, 0.7f);
         }
     }
 
@@ -288,6 +376,28 @@ public class MainMenuGui : MonoBehaviour
         imageButtonStyle.hover.background = null;
         imageButtonStyle.active.background = null;
 
+        optionButtonStyle = new GUIStyle(GUI.skin.button);
+        optionButtonStyle.normal.background = optionButtonBackground;
+        optionButtonStyle.hover.background = optionButtonPressed != null
+            ? optionButtonPressed
+            : optionButtonBackground;
+        optionButtonStyle.active.background = optionButtonPressed != null
+            ? optionButtonPressed
+            : optionButtonBackground;
+        optionButtonStyle.border = new RectOffset(12, 12, 12, 12);
+
+        sliderStyle = new GUIStyle(GUI.skin.horizontalSlider);
+        sliderStyle.normal.background = sliderBackground;
+        sliderStyle.fixedHeight = 18f;
+        sliderStyle.margin = new RectOffset(0, 0, 7, 7);
+
+        sliderThumbStyle = new GUIStyle(GUI.skin.horizontalSliderThumb);
+        sliderThumbStyle.normal.background = sliderThumb;
+        sliderThumbStyle.hover.background = sliderThumb;
+        sliderThumbStyle.active.background = sliderThumb;
+        sliderThumbStyle.fixedWidth = 34f;
+        sliderThumbStyle.fixedHeight = 34f;
+
         headingStyle = new GUIStyle(GUI.skin.label);
         headingStyle.alignment = TextAnchor.MiddleCenter;
         headingStyle.fontSize = 30;
@@ -299,6 +409,36 @@ public class MainMenuGui : MonoBehaviour
         labelStyle.fontSize = 18;
         labelStyle.fontStyle = FontStyle.Bold;
         labelStyle.normal.textColor = Color.white;
+    }
+
+    static void DrawTextureOrLabel(Rect rect, Texture2D texture, string fallback, GUIStyle style)
+    {
+        if (texture != null)
+        {
+            GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit, true);
+        }
+        else
+        {
+            GUI.Label(rect, fallback, style);
+        }
+    }
+
+    static Rect ExpandRect(Rect rect, float amount)
+    {
+        return new Rect(
+            rect.x - amount,
+            rect.y - amount,
+            rect.width + amount * 2f,
+            rect.height + amount * 2f
+        );
+    }
+
+    static void DrawBorder(Rect rect, Color color, float thickness)
+    {
+        DrawColorRect(new Rect(rect.x, rect.y, rect.width, thickness), color);
+        DrawColorRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
+        DrawColorRect(new Rect(rect.x, rect.y, thickness, rect.height), color);
+        DrawColorRect(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
     }
 
     static void DrawColorRect(Rect rect, Color color)
