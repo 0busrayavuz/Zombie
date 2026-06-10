@@ -13,6 +13,7 @@ public class RifleWeapon : MonoBehaviour
     AudioSource audioSource;
     AudioClip shotClip;
     AudioClip[] ricochetClips;
+    Renderer weaponRenderer;
     float nextFireTime;
     float hitMarkerUntil;
 
@@ -33,6 +34,12 @@ public class RifleWeapon : MonoBehaviour
         audioSource.spatialBlend = 0f;
         shotClip = Resources.Load<AudioClip>("Audio/RifleShot");
         ricochetClips = Resources.LoadAll<AudioClip>("Audio/Ricochets");
+        FindWeaponRenderer();
+    }
+
+    void Start()
+    {
+        FindWeaponRenderer();
     }
 
     void Update()
@@ -58,6 +65,8 @@ public class RifleWeapon : MonoBehaviour
         }
 
         Ray ray = aimCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        Vector3 muzzlePosition = GetMuzzlePosition(ray.direction);
+        CreateMuzzleFire(muzzlePosition, ray.direction);
         int layerMask = hitLayers.value == 0 ? Physics.DefaultRaycastLayers : hitLayers.value;
         Vector3 tracerEnd = ray.origin + ray.direction * range;
 
@@ -87,7 +96,140 @@ public class RifleWeapon : MonoBehaviour
             break;
         }
 
-        DrawTracer(ray.origin, tracerEnd);
+        DrawTracer(muzzlePosition, tracerEnd);
+    }
+
+    void CreateMuzzleFire(Vector3 position, Vector3 direction)
+    {
+        GameObject effect = new GameObject("Muzzle Fire");
+        effect.transform.position = position;
+        effect.transform.rotation = Quaternion.LookRotation(direction);
+
+        ParticleSystem particles = effect.AddComponent<ParticleSystem>();
+        particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ParticleSystem.MainModule main = particles.main;
+        main.duration = 0.04f;
+        main.loop = false;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.025f, 0.055f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.7f, 1.8f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.085f);
+        main.startColor = new ParticleSystem.MinMaxGradient(
+            new Color(1f, 0.78f, 0.18f, 0.95f),
+            new Color(1f, 0.18f, 0.01f, 0.8f)
+        );
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 8;
+
+        ParticleSystem.EmissionModule emission = particles.emission;
+        emission.rateOverTime = 0f;
+        emission.SetBursts(new[]
+        {
+            new ParticleSystem.Burst(0f, 6)
+        });
+
+        ParticleSystem.ShapeModule shape = particles.shape;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.angle = 7f;
+        shape.radius = 0.01f;
+        shape.length = 0.06f;
+
+        ParticleSystem.ColorOverLifetimeModule color = particles.colorOverLifetime;
+        color.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(new Color(1f, 0.82f, 0.24f), 0f),
+                new GradientColorKey(new Color(1f, 0.16f, 0.01f), 1f)
+            },
+            new[]
+            {
+                new GradientAlphaKey(0.95f, 0f),
+                new GradientAlphaKey(0f, 1f)
+            }
+        );
+        color.color = gradient;
+
+        ParticleSystemRenderer particleRenderer = effect.GetComponent<ParticleSystemRenderer>();
+        particleRenderer.renderMode = ParticleSystemRenderMode.Stretch;
+        particleRenderer.lengthScale = 1.8f;
+        particleRenderer.velocityScale = 0.12f;
+        particleRenderer.material = CreateMuzzleParticleMaterial();
+
+        Light fireLight = effect.AddComponent<Light>();
+        fireLight.type = LightType.Point;
+        fireLight.color = new Color(1f, 0.42f, 0.06f);
+        fireLight.intensity = 0.65f;
+        fireLight.range = 1.5f;
+        fireLight.shadows = LightShadows.None;
+
+        particles.Play();
+        Destroy(effect, 0.09f);
+    }
+
+    Vector3 GetMuzzlePosition(Vector3 direction)
+    {
+        if (weaponRenderer == null)
+        {
+            FindWeaponRenderer();
+        }
+
+        if (weaponRenderer != null)
+        {
+            Bounds bounds = weaponRenderer.bounds;
+            Vector3 normalizedDirection = direction.normalized;
+            float extent =
+                Mathf.Abs(normalizedDirection.x) * bounds.extents.x +
+                Mathf.Abs(normalizedDirection.y) * bounds.extents.y +
+                Mathf.Abs(normalizedDirection.z) * bounds.extents.z;
+            return bounds.center + normalizedDirection * (extent + 0.035f);
+        }
+
+        return transform.position +
+            Vector3.up * 1.05f +
+            aimCamera.transform.right * 0.25f +
+            direction * 0.45f;
+    }
+
+    void FindWeaponRenderer()
+    {
+        foreach (Renderer candidate in GetComponentsInChildren<Renderer>(true))
+        {
+            string candidateName = candidate.name.ToLowerInvariant();
+            string materialName = candidate.sharedMaterial == null
+                ? string.Empty
+                : candidate.sharedMaterial.name.ToLowerInvariant();
+
+            if (candidateName.Contains("weapon") ||
+                candidateName.Contains("rifle") ||
+                candidateName.Contains("gun") ||
+                materialName.Contains("weapon"))
+            {
+                weaponRenderer = candidate;
+                return;
+            }
+        }
+    }
+
+    Material CreateMuzzleParticleMaterial()
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader == null)
+        {
+            shader = Shader.Find("Particles/Standard Unlit");
+        }
+
+        Material material = new Material(shader);
+        material.name = "Muzzle Fire Material";
+        Color color = new Color(1f, 0.34f, 0.025f, 0.85f);
+        material.color = color;
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+
+        return material;
     }
 
     void PlayRicochet(Vector3 position)
