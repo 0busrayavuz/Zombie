@@ -25,6 +25,12 @@ public class GameManager : MonoBehaviour
         helicopter = rescueHelicopter;
     }
 
+    public void ApplyDifficulty(int difficulty)
+    {
+        secondsToLand = difficulty == 0 ? 15f : difficulty == 2 ? 35f : 25f;
+        ScheduleHelicopter();
+    }
+
     void Awake()
     {
         instance = this;
@@ -64,12 +70,7 @@ public class GameManager : MonoBehaviour
             helicopter = FindFirstObjectByType<Helicopter>();
         }
 
-        if (secondsToLand > 0f)
-        {
-            landingTime = Time.time + secondsToLand;
-            RescueTimeRemaining = secondsToLand;
-            Invoke("LandOrWin", secondsToLand);
-        }
+        ApplyDifficulty(GameSettings.Difficulty);
     }
 
     void Update()
@@ -96,6 +97,19 @@ public class GameManager : MonoBehaviour
         else if (winWhenTimerExpiresWithoutHelicopter)
         {
             WinPlayer();
+        }
+    }
+
+    void ScheduleHelicopter()
+    {
+        CancelInvoke("LandOrWin");
+        RescueHasArrived = false;
+        landingTime = Time.time + secondsToLand;
+        RescueTimeRemaining = secondsToLand;
+
+        if (secondsToLand > 0f)
+        {
+            Invoke("LandOrWin", secondsToLand);
         }
     }
 

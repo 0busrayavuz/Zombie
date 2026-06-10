@@ -156,6 +156,12 @@ public class MainMenuGui : MonoBehaviour
             spawnManager.ApplyDifficulty(GameSettings.Difficulty);
         }
 
+        GameManager gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager != null)
+        {
+            gameManager.ApplyDifficulty(GameSettings.Difficulty);
+        }
+
         IsMenuOpen = false;
         optionsOpen = false;
         gameStarted = true;

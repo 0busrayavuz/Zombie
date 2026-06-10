@@ -11,6 +11,7 @@ public class Health : MonoBehaviour
     bool isDead;
     AudioClip[] playerHitSounds;
     AudioClip playerDeathSound;
+    AudioSource playerDeathAudio;
 
     public event Action<Health> Died;
     public event Action<int, int> HealthChanged;
@@ -25,6 +26,19 @@ public class Health : MonoBehaviour
         currentHealth = maximumHealth;
         playerHitSounds = Resources.LoadAll<AudioClip>("Audio/PlayerHits");
         playerDeathSound = Resources.Load<AudioClip>("Audio/PlayerDeath");
+
+        if (CompareTag("Player") && playerDeathSound != null)
+        {
+            AudioListener.pause = false;
+            playerDeathAudio = gameObject.AddComponent<AudioSource>();
+            playerDeathAudio.clip = playerDeathSound;
+            playerDeathAudio.playOnAwake = false;
+            playerDeathAudio.loop = false;
+            playerDeathAudio.spatialBlend = 0f;
+            playerDeathAudio.priority = 0;
+            playerDeathAudio.volume = 1f;
+            playerDeathAudio.ignoreListenerPause = true;
+        }
     }
 
     public void Damage(int damageValue)
@@ -70,7 +84,7 @@ public class Health : MonoBehaviour
         bool isPlayer = CompareTag("Player");
         if (isPlayer && playerDeathSound != null)
         {
-            AudioSource.PlayClipAtPoint(playerDeathSound, transform.position, 0.9f);
+            PlayPlayerDeathAudio();
         }
 
         if (!isPlayer)
@@ -111,6 +125,24 @@ public class Health : MonoBehaviour
         }
 
         Died?.Invoke(this);
+    }
+
+    void PlayPlayerDeathAudio()
+    {
+        foreach (AudioSource source in FindObjectsByType<AudioSource>(FindObjectsSortMode.None))
+        {
+            if (source != playerDeathAudio)
+            {
+                source.Stop();
+            }
+        }
+
+        if (playerDeathAudio != null)
+        {
+            AudioListener.pause = true;
+            playerDeathAudio.time = 0f;
+            playerDeathAudio.Play();
+        }
     }
 
     void DisableLivingComponents(bool isPlayer)

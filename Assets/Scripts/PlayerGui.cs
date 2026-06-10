@@ -9,6 +9,8 @@ public class PlayerGui : MonoBehaviour
     WeaponSwitcher weaponSwitcher;
     GUIStyle smallStyle;
     GUIStyle rightStyle;
+    GUIStyle captionStyle;
+    GUIStyle valueStyle;
     float damageFlash;
     int previousHealth;
 
@@ -84,33 +86,86 @@ public class PlayerGui : MonoBehaviour
         }
 
         float ratio = playerHealth.CurrentHealth / (float)playerHealth.MaximumHealth;
-        Rect background = new Rect(18f, 18f, 230f, 24f);
-        Rect fill = new Rect(background.x + 3f, background.y + 3f, (background.width - 6f) * ratio, background.height - 6f);
+        float panelWidth = Mathf.Min(310f, Screen.width * 0.42f);
+        Rect panel = new Rect(22f, Screen.height - 104f, panelWidth, 76f);
+        DrawPanel(panel, new Color(0.025f, 0.025f, 0.03f, 0.9f), new Color(0.72f, 0.06f, 0.05f, 0.95f));
 
-        DrawColorRect(background, new Color(0.03f, 0.04f, 0.05f, 0.88f));
-        Color healthColor = Color.Lerp(new Color(0.75f, 0.08f, 0.05f), new Color(0.14f, 0.72f, 0.3f), ratio);
-        DrawColorRect(fill, healthColor);
-        GUI.Label(new Rect(26f, 19f, 210f, 22f), playerHealth.CurrentHealth + " / " + playerHealth.MaximumHealth, smallStyle);
+        GUI.Label(new Rect(panel.x + 14f, panel.y + 8f, 90f, 20f), "HEALTH", captionStyle);
+        GUI.Label(
+            new Rect(panel.xMax - 112f, panel.y + 7f, 98f, 22f),
+            playerHealth.CurrentHealth + " / " + playerHealth.MaximumHealth,
+            valueStyle
+        );
+
+        int segmentCount = 10;
+        float gap = 4f;
+        float barX = panel.x + 14f;
+        float barY = panel.y + 38f;
+        float barWidth = panel.width - 28f;
+        float segmentWidth = (barWidth - gap * (segmentCount - 1)) / segmentCount;
+        int filledSegments = Mathf.CeilToInt(ratio * segmentCount);
+        Color healthColor = Color.Lerp(
+            new Color(0.65f, 0.025f, 0.02f),
+            new Color(0.95f, 0.16f, 0.08f),
+            ratio
+        );
+
+        for (int i = 0; i < segmentCount; i++)
+        {
+            Rect segment = new Rect(barX + i * (segmentWidth + gap), barY, segmentWidth, 22f);
+            DrawColorRect(
+                segment,
+                i < filledSegments ? healthColor : new Color(0.18f, 0.18f, 0.2f, 0.8f)
+            );
+        }
     }
 
     void DrawMissionInfo()
     {
         int kills = playerStats == null ? 0 : playerStats.ZombiesKilled;
         string rescue = GameManager.RescueHasArrived
-            ? "RESCUE READY"
-            : "RESCUE  " + Mathf.CeilToInt(GameManager.RescueTimeRemaining) + "s";
+            ? "HELICOPTER READY"
+            : "HELICOPTER ARRIVES IN  " + Mathf.CeilToInt(GameManager.RescueTimeRemaining) + "s";
 
-        GUI.Label(new Rect(Screen.width - 230f, 18f, 210f, 24f), rescue, rightStyle);
-        GUI.Label(new Rect(Screen.width - 230f, 43f, 210f, 24f), "KILLS  " + kills + "   ACTIVE  " + EnemySpawnManager.LivingZombies, rightStyle);
+        float missionWidth = Mathf.Min(330f, Screen.width * 0.42f);
+        Rect missionPanel = new Rect((Screen.width - missionWidth) * 0.5f, 18f, missionWidth, 38f);
+        DrawPanel(
+            missionPanel,
+            new Color(0.025f, 0.025f, 0.03f, 0.86f),
+            GameManager.RescueHasArrived
+                ? new Color(0.15f, 0.72f, 0.32f, 0.95f)
+                : new Color(0.82f, 0.48f, 0.05f, 0.95f)
+        );
+        GUI.Label(missionPanel, rescue, valueStyle);
+
+        float statWidth = 132f;
+        Rect killsPanel = new Rect(Screen.width - statWidth - 22f, 18f, statWidth, 52f);
+        Rect activePanel = new Rect(Screen.width - statWidth - 22f, 78f, statWidth, 52f);
+        DrawStatPanel(killsPanel, "KILLS", kills, new Color(0.72f, 0.06f, 0.05f));
+        DrawStatPanel(
+            activePanel,
+            "ACTIVE ZOMBIES",
+            EnemySpawnManager.LivingZombies,
+            new Color(0.82f, 0.48f, 0.05f)
+        );
 
         if (weaponSwitcher != null)
         {
-            GUI.Label(
-                new Rect(Screen.width - 230f, Screen.height - 48f, 210f, 24f),
-                weaponSwitcher.CurrentWeaponName,
-                rightStyle
+            Rect weaponPanel = new Rect(Screen.width - 184f, Screen.height - 68f, 162f, 42f);
+            DrawPanel(
+                weaponPanel,
+                new Color(0.025f, 0.025f, 0.03f, 0.88f),
+                new Color(0.5f, 0.5f, 0.54f, 0.9f)
             );
+            GUI.Label(weaponPanel, weaponSwitcher.CurrentWeaponName.ToUpperInvariant(), valueStyle);
         }
+    }
+
+    void DrawStatPanel(Rect rect, string caption, int value, Color accent)
+    {
+        DrawPanel(rect, new Color(0.025f, 0.025f, 0.03f, 0.88f), accent);
+        GUI.Label(new Rect(rect.x + 8f, rect.y + 5f, rect.width - 16f, 17f), caption, captionStyle);
+        GUI.Label(new Rect(rect.x + 8f, rect.y + 21f, rect.width - 16f, 26f), value.ToString(), valueStyle);
     }
 
     void DrawCrosshair()
@@ -143,6 +198,23 @@ public class PlayerGui : MonoBehaviour
 
         rightStyle = new GUIStyle(smallStyle);
         rightStyle.alignment = TextAnchor.MiddleRight;
+
+        captionStyle = new GUIStyle(smallStyle);
+        captionStyle.fontSize = 11;
+        captionStyle.alignment = TextAnchor.MiddleLeft;
+        captionStyle.normal.textColor = new Color(0.72f, 0.72f, 0.76f);
+
+        valueStyle = new GUIStyle(smallStyle);
+        valueStyle.fontSize = 16;
+        valueStyle.alignment = TextAnchor.MiddleCenter;
+        valueStyle.normal.textColor = Color.white;
+    }
+
+    static void DrawPanel(Rect rect, Color background, Color accent)
+    {
+        DrawColorRect(rect, background);
+        DrawColorRect(new Rect(rect.x, rect.y, 4f, rect.height), accent);
+        DrawColorRect(new Rect(rect.x, rect.y, rect.width, 2f), new Color(accent.r, accent.g, accent.b, 0.55f));
     }
 
     static void DrawColorRect(Rect rect, Color color)
